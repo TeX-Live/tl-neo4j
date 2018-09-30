@@ -1,0 +1,144 @@
+#!/usr/bin/env perl
+# Copyright 2018 Norbert Preining
+# This file is licensed under the GNU General Public License version 2
+# or any later version.
+# 
+# Outputs files that can be imported into a Neo4j database using neo4j-import
+#
+# TODO
+# for now we ignore .win32 packages
+# Cannot find uuid for dependency texlive.infra
+# Cannot find uuid for dependency texlive.infra
+# Cannot find uuid for dependency texlive.infra
+# Cannot find uuid for dependency dviout.win32
+# Cannot find uuid for dependency wintools.win32
+
+
+my $Master;
+
+BEGIN {
+  $^W = 1;
+  print "D1 = $ARGV[0]\n";
+  $Master = $ARGV[0];
+  unshift (@INC, "$Master/tlpkg");
+}
+
+use strict;
+use TeXLive::TLPOBJ;
+use TeXLive::TLPDB;
+use TeXLive::TLUtils;
+use UUID 'uuid';
+
+exit (&main());
+
+
+sub main
+{
+  my %pkgs;
+  my %fls;
+
+  my $tlpdb = TeXLive::TLPDB->new("root" => $Master);
+  die "Cannot init tlpdb from $Master ..." unless defined($tlpdb);
+
+  foreach my $pkg ($tlpdb->list_packages) {
+    next if ($pkg =~ m/^00texlive/);  # ignore internal pkgs.
+    # ignore *all* arch dep pacakges (also tlpsv etc.)
+    next if ($pkg =~ m/\./);
+
+    my $tlp = $tlpdb->get_package($pkg);
+    if (!defined($tlp)) {
+      warn "strange, $pkg not found but listed, continuing anyway";
+      next;
+    }
+   
+    $pkgs{$pkg}{'category'} = $tlp->category;
+	$pkgs{$pkg}{'depends'} = {};
+	my @deps = $tlp->depends;
+	for my $d (@deps) {
+	  $pkgs{$pkg}{'depends'}{$d} = 1;
+	}
+
+	# go over files
+	for my $f ($tlp->docfiles) {
+	  $fls{$f}{'uuid'} = myuuid() if (!$fls{$f}{'uuid'});
+	  $fls{$f}{'contained'}{$pkg} = 'doc';
+	}
+	for my $f ($tlp->runfiles) {
+	  $fls{$f}{'uuid'} = myuuid() if (!$fls{$f}{'uuid'});
+	  $fls{$f}{'contained'}{$pkg} = 'run';
+	}
+	for my $f ($tlp->srcfiles) {
+	  $fls{$f}{'uuid'} = myuuid() if (!$fls{$f}{'uuid'});
+	  $fls{$f}{'contained'}{$pkg} = 'src';
+	}
+	my %foo = %{$tlp->binfiles};
+	for my $a (keys %foo) {
+	  for my $f (@{$foo{$a}}) {
+	    $fls{$f}{'uuid'} = myuuid() if (!$fls{$f}{'uuid'});
+	    $fls{$f}{'contained'}{$pkg} = 'bin';
+	  }
+	}
+	$pkgs{$pkg}{'uuid'} = myuuid();
+  }
+
+  mkdir("./out");
+  my %fd;
+  for my $f (qw/Package Collection Scheme ConTeXt TLCore Files/) {
+    open($fd{$f}, ">:encoding(UTF-8)", "out/node-$f.csv") || die("Cannot open out/node-$f.csv: $!");
+	print { $fd{$f} } "uuid:ID,name\n";
+  }
+  open($fd{'depends'}, ">:encoding(UTF-8)", "out/edge-depends.csv") || die("Cannot open out/edge-depends.csv: $!");
+  print { $fd{'depends'} } ":START_ID,:END_ID\n";
+  open($fd{'contains'}, ">:encoding(UTF-8)", "out/edge-contains.csv") || die("Cannot open out/edge-contains.csv: $!");
+  print { $fd{'contains'} } ":START_ID,type,:END_ID\n";
+
+
+  for my $pkg (keys %pkgs) {
+	my $cat = $pkgs{$pkg}{'category'};
+	my $uid = $pkgs{$pkg}{'uuid'};
+	print { $fd{$cat} } "$uid,$pkg\n";
+	for my $dep (keys %{$pkgs{$pkg}{'depends'}}) {
+	  next if ($dep =~ m/\.ARCH$/);
+	  my $depuuid = $pkgs{$dep}{'uuid'};
+	  if ($depuuid) {
+	  	print { $fd{'depends'} } "$uid,$depuuid\n";
+	  } else {
+		warn("Cannot find uuid for dependency $dep\n");
+	  }
+	}
+  }
+
+  for my $f (keys %fls) {
+	my $uid = $fls{$f}{'uuid'};
+	print { $fd{'Files'} } "$uid,\"$f\"\n";
+	for my $pkg (keys %{$fls{$f}{'contained'}}) {
+	  my $cuuid = $pkgs{$pkg}{'uuid'};
+	  if ($cuuid) {
+		my $t = $fls{$f}{'contained'}{$pkg};
+		print { $fd{'contains'} } "$cuuid,$t,$uid\n";
+	  } else {
+		warn("Cannot find uuid for dependency $pkg for file $f\n");
+	  }
+	}
+  }
+
+
+  for my $fd (keys %fd) {
+	close($fd{$fd}) || warn "Cannot close fd for $fd: $!";
+  }
+}
+
+sub myuuid {
+  my $foo = uuid();
+  $foo =~ s/-//g;
+  return "id$foo";
+}
+
+__END__
+
+### Local Variables:
+### perl-indent-level: 2
+### tab-width: 2
+### indent-tabs-mode: nil
+### End:
+# vim:set tabstop=2 expandtab: #
