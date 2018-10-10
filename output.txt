@@ -1,7 +1,0 @@
-IMPORT DONE in 4s 199ms. 
-Imported:
-  168140 nodes
-  168803 relationships
-  336280 properties
-Peak memory usage: 1.03 GB
-

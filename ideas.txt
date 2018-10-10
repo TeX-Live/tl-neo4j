@@ -1,1 +1,0 @@
-Switch from uuid to some hashing method to make updates easier!

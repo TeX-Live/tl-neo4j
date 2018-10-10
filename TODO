@@ -1,0 +1,5 @@
+* update database on daily basis with new packages and new TLPDBs
+  and if necessary new files
+  question is how to get the differences only and use cypher, because
+  I don't think that neo4j import will allow to import into an 
+  existing database

@@ -13,10 +13,10 @@ Find cycles in our dependencies
 returns context (oooh, that is really stupid ;-)
 
 Find files multiply included
-    match (p1) -[:contains]-> (f) <- [:contains]- (p2) return p1, p2, f;
+    match (p1) -[:includes]-> (f) <- [:includes]- (p2) return p1, p2, f;
 
 Find all documentation files for a package
-    match (p) -[:contains {type:'doc'}]-> (f) where p.name = "tlcockpit" return p,f;
+    match (p) -[:includes {type:'doc'}]-> (f) where p.name = "tlcockpit" return p,f;
 
 
 
