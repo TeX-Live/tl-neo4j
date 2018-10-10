@@ -1,0 +1,14 @@
+CREATE INDEX ON :TLPDB(revision) ;
+CREATE INDEX ON :TLCore(name, revision) ;
+CREATE INDEX ON :Collection(name, revision) ; 
+CREATE INDEX ON :ConTeXt(name, revision) ; 
+CREATE INDEX ON :Package(name, revision) ; 
+CREATE INDEX ON :Scheme(name, revision) ; 
+CREATE INDEX ON :File(name) ;
+
+CREATE INDEX ON :TLPDB(uuid) ;
+CREATE INDEX ON :TLCore(uuid) ;
+CREATE INDEX ON :Collection(uuid) ; 
+CREATE INDEX ON :ConTeXt(uuid) ; 
+CREATE INDEX ON :Package(uuid) ; 
+CREATE INDEX ON :Scheme(uuid) ; 

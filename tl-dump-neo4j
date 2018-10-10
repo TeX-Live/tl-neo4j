@@ -18,16 +18,24 @@ my $Master;
 
 BEGIN {
   $^W = 1;
-  print "D1 = $ARGV[0]\n";
-  $Master = $ARGV[0];
-  unshift (@INC, "$Master/tlpkg");
+  unshift (@INC, "./tlpkg");
 }
 
 use strict;
 use TeXLive::TLPOBJ;
 use TeXLive::TLPDB;
 use TeXLive::TLUtils;
-use UUID 'uuid';
+use Getopt::Long;
+use File::Path qw/make_path/;
+
+my $opt_initial = 0;
+my $opt_output  = "./out";
+
+GetOptions(
+  "initial!" => \$opt_initial,
+  "output=s" => \$opt_output,
+) or die "Cannot parse command line: $!";
+
 
 exit (&main());
 
@@ -37,8 +45,12 @@ sub main
   my %pkgs;
   my %fls;
 
-  my $tlpdb = TeXLive::TLPDB->new("root" => $Master);
-  die "Cannot init tlpdb from $Master ..." unless defined($tlpdb);
+  my $idstr = ($opt_initial ? ":ID" : "");
+  my $intstr = ($opt_initial ? ":int" : "");
+
+  my $tlpdb = TeXLive::TLPDB->new();
+  $tlpdb->from_file($ARGV[0], verify => 0, media => "local_uncompressed");
+  die "Cannot init tlpdb from $ARGV[0] ..." unless defined($tlpdb);
 
   # try to get basic information of tlpdb
   my $tlpdbrevision = $tlpdb->config_revision;
@@ -85,23 +97,25 @@ sub main
     $pkgs{$pkg}{'uuid'} = $pkg . ":" . $pkgs{$pkg}{'revision'};
   }
 
-  mkdir("./out");
+  if (! -d $opt_output) {
+    make_path($opt_output) || die("Cannot create output directory $opt_output: $?");
+  }
   my %fd;
-  open($fd{'TLPDB'}, ">:encoding(UTF-8)", "out/node-TLPDB.csv") || die("Cannot open out/node-TLPDB.csv: $!");
-  print { $fd{'TLPDB'} } "revision:ID\n";
-  print { $fd{'TLPDB'} } "$tlpdbrevision\n";
+  open($fd{'TLPDB'}, ">:encoding(UTF-8)", "$opt_output/node-TLPDB.csv") || die("Cannot open $opt_output/node-TLPDB.csv: $!");
+  print { $fd{'TLPDB'} } "uuid$idstr,revision$intstr\n";
+  print { $fd{'TLPDB'} } "tlpdb:$tlpdbrevision,$tlpdbrevision\n";
 
   for my $f (qw/Package Collection Scheme ConTeXt TLCore/) {
-    open($fd{$f}, ">:encoding(UTF-8)", "out/node-$f.csv") || die("Cannot open out/node-$f.csv: $!");
-    print { $fd{$f} } "uuid:ID,name,revision\n";
+    open($fd{$f}, ">:encoding(UTF-8)", "$opt_output/node-$f.csv") || die("Cannot open $opt_output/node-$f.csv: $!");
+    print { $fd{$f} } "uuid$idstr,name,revision$intstr\n";
   }
-  open($fd{'Files'}, ">:encoding(UTF-8)", "out/node-Files.csv") || die("Cannot open out/node-Files.csv: $!");
-  print { $fd{'Files'} } "name:ID\n";
-  open($fd{'depends'}, ">:encoding(UTF-8)", "out/edge-depends.csv") || die("Cannot open out/edge-depends.csv: $!");
+  open($fd{'File'}, ">:encoding(UTF-8)", "$opt_output/node-File.csv") || die("Cannot open $opt_output/node-File.csv: $!");
+  print { $fd{'File'} } "name$idstr\n";
+  open($fd{'depends'}, ">:encoding(UTF-8)", "$opt_output/edge-depends.csv") || die("Cannot open $opt_output/edge-depends.csv: $!");
   print { $fd{'depends'} } ":START_ID,:END_ID\n";
-  open($fd{'contains'}, ">:encoding(UTF-8)", "out/edge-contains.csv") || die("Cannot open out/edge-contains.csv: $!");
+  open($fd{'contains'}, ">:encoding(UTF-8)", "$opt_output/edge-contains.csv") || die("Cannot open $opt_output/edge-contains.csv: $!");
   print { $fd{'contains'} } ":START_ID,:END_ID\n";
-  open($fd{'includes'}, ">:encoding(UTF-8)", "out/edge-includes.csv") || die("Cannot open out/edge-includes.csv: $!");
+  open($fd{'includes'}, ">:encoding(UTF-8)", "$opt_output/edge-includes.csv") || die("Cannot open $opt_output/edge-includes.csv: $!");
   print { $fd{'includes'} } ":START_ID,type,:END_ID\n";
 
 
@@ -110,7 +124,7 @@ sub main
     my $uid = $pkgs{$pkg}{'uuid'};
     my $ver = $pkgs{$pkg}{'revision'};
     print { $fd{$cat} } "$uid,$pkg,$ver\n";
-    print { $fd{'contains'} } "$tlpdbrevision,$uid\n";
+    print { $fd{'contains'} } "tlpdb:$tlpdbrevision,$uid\n";
     for my $dep (keys %{$pkgs{$pkg}{'depends'}}) {
       next if ($dep =~ m/\.ARCH$/);
       my $depuuid = $pkgs{$dep}{'uuid'};
@@ -123,7 +137,7 @@ sub main
   }
 
   for my $f (keys %fls) {
-    print { $fd{'Files'} } "\"$f\"\n";
+    print { $fd{'File'} } "\"$f\"\n";
     for my $pkg (keys %{$fls{$f}{'contained'}}) {
       my $cuuid = $pkgs{$pkg}{'uuid'};
       if ($cuuid) {

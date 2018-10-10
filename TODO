@@ -3,3 +3,61 @@
   question is how to get the differences only and use cypher, because
   I don't think that neo4j import will allow to import into an 
   existing database
+  one needs to use load csv and do merge on create or so???
+  https://stackoverflow.com/questions/27110519/csv-load-and-updating-existing-nodes-creating-new-ones
+  https://neo4j.com/developer/guide-import-csv/
+
+
+
+initial import uses neo4j import thus needs :ID and :int statements
+later CSV load/merge don't support this and thus needs toInt etc
+
+CSV import
+
+check statements:
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-TLPDB.csv" AS row RETURN toInt(row.revision) ;
+
+
+load and merge
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-TLPDB.csv" AS row 
+  MERGE (tlpdb:TLPDB { uuid: row.uuid, revision: toInt(row.revision) }) ;
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-Collection.csv" AS row 
+  MERGE (c:Collection { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-TLCore.csv" AS row 
+  MERGE (c:TLCore { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-Package.csv" AS row 
+  MERGE (c:Package { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-Scheme.csv" AS row 
+  MERGE (c:Scheme { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-ConTeXt.csv" AS row 
+  MERGE (c:ConTeXt { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+for files we only have name to set
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-File.csv" AS row 
+  MERGE (c:File { name: row.name }) ;
+
+
+load relations IS HORRIBLE SLOW!!!
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/edge-contains.csv" AS row
+  MATCH (p { uuid: row.`:START_ID`}), (q { uuid: row.`:END_ID` } )
+  MERGE (p)-[r:contains]->(q) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/edge-depends.csv" AS row
+  MATCH (p { uuid: row.`:START_ID`}), (q { uuid: row.`:END_ID` } )
+  MERGE (p)-[r:depends]->(q) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/edge-includes.csv" AS row
+  MATCH (p { uuid: row.`:START_ID`}), (q { uuid: row.`:END_ID` } )
+  MERGE (p)-[r:includes {type: row.type}]->(q) ;
+
