@@ -44,6 +44,14 @@ LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-File.csv" AS row
   MERGE (c:File { name: row.name }) ;
 
 
+
+
+===========================
+
+In the new case with only one Package node type and category tag
+
+
+
 load relations IS HORRIBLE SLOW!!!
 
 USING PERIODIC COMMIT 1000
@@ -60,4 +68,40 @@ USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/edge-includes.csv" AS row
   MATCH (p { uuid: row.`:START_ID`}), (q { uuid: row.`:END_ID` } )
   MERGE (p)-[r:includes {type: row.type}]->(q) ;
+
+
+
+
+===========================
+
+In the new case with only one Package node type and category tag
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/outnew/node-TLPDB.csv" AS row 
+  MERGE (tlpdb:TLPDB { uuid: row.uuid, revision: toInt(row.revision) }) ;
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/outnew/node-Package.csv" AS row 
+  MERGE (c:Package { uuid: row.uuid, name: row.name, category: row.category, revision: toInt(row.revision) }) ;
+
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/outnew/node-File.csv" AS row 
+  MERGE (c:File { name: row.name }) ;
+
+in the new case loading the edges is much faster!
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/outnew/edge-contains.csv" AS row
+  MATCH (p:TLPDB { uuid: row.`:START_ID`}), (q:Package { uuid: row.`:END_ID` } )
+  MERGE (p)-[r:contains]->(q) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/outnew/edge-depends.csv" AS row
+  MATCH (p:Package { uuid: row.`:START_ID`}), (q:Package { uuid: row.`:END_ID` } )
+  MERGE (p)-[r:depends]->(q) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/outnew/edge-includes.csv" AS row
+  MATCH (p:Package { uuid: row.`:START_ID`}), (q:File { name: row.`:END_ID` } )
+  MERGE (p)-[r:includes {type: row.type}]->(q) ;
+
+
+
 

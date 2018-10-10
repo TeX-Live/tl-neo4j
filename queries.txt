@@ -1,12 +1,20 @@
 Get all schemes
 	match (s:Scheme) return s;
+new style
+	match (p:Package {category:'Scheme'}) return p;
 
 Get all packages/schemes where a scheme depends directly on something other than a collection
     match p = (s:Scheme) -[:depends]-> (q) where NOT 'Collection' IN LABELS(q) return p;
+new style
+	match p = (s:Package {category:'Scheme'}) -[:depends]-> (q:Package) where NOT q.category = 'Collection' return p;
 
 Check whether no package is included in two collections
 	match (c1:Collection) -[:depends]-> (p) <-[:depends]- (c2:Collection) return c1, c2, p;
 returns only collection - collection dependencies
+new style
+   match (t:TLPDB) --> (c1:Package {category:'Collection'}) -[:depends]-> (p)
+     <-[:depends]- (c2:Package {category:'Collection'}) <-- (t) where t.revision = 48871
+     return c1, c2, p, t;
 
 Find cycles in our dependencies
 	match p = (n)-[:depends*]-> (n) return p;
@@ -19,7 +27,8 @@ Find all documentation files for a package
     match (p) -[:includes {type:'doc'}]-> (f) where p.name = "tlcockpit" return p,f;
 
 
-
+PROBLEM with new style:
+	We want to restrict searches only to one revision of a tlpdb!!!
 
 
 
