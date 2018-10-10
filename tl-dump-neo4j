@@ -52,41 +52,40 @@ sub main
     }
    
     $pkgs{$pkg}{'category'} = $tlp->category;
-	$pkgs{$pkg}{'depends'} = {};
-	my @deps = $tlp->depends;
-	for my $d (@deps) {
-	  $pkgs{$pkg}{'depends'}{$d} = 1;
-	}
+    $pkgs{$pkg}{'revision'} = $tlp->revision;
+    $pkgs{$pkg}{'depends'} = {};
+    my @deps = $tlp->depends;
+    for my $d (@deps) {
+      $pkgs{$pkg}{'depends'}{$d} = 1;
+    }
 
-	# go over files
-	for my $f ($tlp->docfiles) {
-	  $fls{$f}{'uuid'} = myuuid() if (!$fls{$f}{'uuid'});
-	  $fls{$f}{'contained'}{$pkg} = 'doc';
-	}
-	for my $f ($tlp->runfiles) {
-	  $fls{$f}{'uuid'} = myuuid() if (!$fls{$f}{'uuid'});
-	  $fls{$f}{'contained'}{$pkg} = 'run';
-	}
-	for my $f ($tlp->srcfiles) {
-	  $fls{$f}{'uuid'} = myuuid() if (!$fls{$f}{'uuid'});
-	  $fls{$f}{'contained'}{$pkg} = 'src';
-	}
-	my %foo = %{$tlp->binfiles};
-	for my $a (keys %foo) {
-	  for my $f (@{$foo{$a}}) {
-	    $fls{$f}{'uuid'} = myuuid() if (!$fls{$f}{'uuid'});
-	    $fls{$f}{'contained'}{$pkg} = 'bin';
-	  }
-	}
-	$pkgs{$pkg}{'uuid'} = myuuid();
+    # go over files
+    for my $f ($tlp->docfiles) {
+      $fls{$f}{'contained'}{$pkg} = 'doc';
+    }
+    for my $f ($tlp->runfiles) {
+      $fls{$f}{'contained'}{$pkg} = 'run';
+    }
+    for my $f ($tlp->srcfiles) {
+      $fls{$f}{'contained'}{$pkg} = 'src';
+    }
+    my %foo = %{$tlp->binfiles};
+    for my $a (keys %foo) {
+      for my $f (@{$foo{$a}}) {
+        $fls{$f}{'contained'}{$pkg} = 'bin';
+      }
+    }
+    $pkgs{$pkg}{'uuid'} = $pkg . ":" . $pkgs{$pkg}{'revision'};
   }
 
   mkdir("./out");
   my %fd;
-  for my $f (qw/Package Collection Scheme ConTeXt TLCore Files/) {
+  for my $f (qw/Package Collection Scheme ConTeXt TLCore/) {
     open($fd{$f}, ">:encoding(UTF-8)", "out/node-$f.csv") || die("Cannot open out/node-$f.csv: $!");
-	print { $fd{$f} } "uuid:ID,name\n";
+    print { $fd{$f} } "uuid:ID,name,revision\n";
   }
+  open($fd{'Files'}, ">:encoding(UTF-8)", "out/node-Files.csv") || die("Cannot open out/node-Files.csv: $!");
+  print { $fd{'Files'} } "name:ID\n";
   open($fd{'depends'}, ">:encoding(UTF-8)", "out/edge-depends.csv") || die("Cannot open out/edge-depends.csv: $!");
   print { $fd{'depends'} } ":START_ID,:END_ID\n";
   open($fd{'contains'}, ">:encoding(UTF-8)", "out/edge-contains.csv") || die("Cannot open out/edge-contains.csv: $!");
@@ -94,44 +93,38 @@ sub main
 
 
   for my $pkg (keys %pkgs) {
-	my $cat = $pkgs{$pkg}{'category'};
-	my $uid = $pkgs{$pkg}{'uuid'};
-	print { $fd{$cat} } "$uid,$pkg\n";
-	for my $dep (keys %{$pkgs{$pkg}{'depends'}}) {
-	  next if ($dep =~ m/\.ARCH$/);
-	  my $depuuid = $pkgs{$dep}{'uuid'};
-	  if ($depuuid) {
-	  	print { $fd{'depends'} } "$uid,$depuuid\n";
-	  } else {
-		warn("Cannot find uuid for dependency $dep\n");
-	  }
-	}
+    my $cat = $pkgs{$pkg}{'category'};
+    my $uid = $pkgs{$pkg}{'uuid'};
+    my $ver = $pkgs{$pkg}{'revision'};
+    print { $fd{$cat} } "$uid,$pkg,$ver\n";
+    for my $dep (keys %{$pkgs{$pkg}{'depends'}}) {
+      next if ($dep =~ m/\.ARCH$/);
+      my $depuuid = $pkgs{$dep}{'uuid'};
+      if ($depuuid) {
+          print { $fd{'depends'} } "$uid,$depuuid\n";
+      } else {
+        warn("Cannot find uuid for dependency $dep\n");
+      }
+    }
   }
 
   for my $f (keys %fls) {
-	my $uid = $fls{$f}{'uuid'};
-	print { $fd{'Files'} } "$uid,\"$f\"\n";
-	for my $pkg (keys %{$fls{$f}{'contained'}}) {
-	  my $cuuid = $pkgs{$pkg}{'uuid'};
-	  if ($cuuid) {
-		my $t = $fls{$f}{'contained'}{$pkg};
-		print { $fd{'contains'} } "$cuuid,$t,$uid\n";
-	  } else {
-		warn("Cannot find uuid for dependency $pkg for file $f\n");
-	  }
-	}
+    print { $fd{'Files'} } "\"$f\"\n";
+    for my $pkg (keys %{$fls{$f}{'contained'}}) {
+      my $cuuid = $pkgs{$pkg}{'uuid'};
+      if ($cuuid) {
+        my $t = $fls{$f}{'contained'}{$pkg};
+        print { $fd{'contains'} } "$cuuid,$t,\"$f\"\n";
+      } else {
+        warn("Cannot find uuid for dependency $pkg for file $f\n");
+      }
+    }
   }
 
 
   for my $fd (keys %fd) {
-	close($fd{$fd}) || warn "Cannot close fd for $fd: $!";
+    close($fd{$fd}) || warn "Cannot close fd for $fd: $!";
   }
-}
-
-sub myuuid {
-  my $foo = uuid();
-  $foo =~ s/-//g;
-  return "id$foo";
 }
 
 __END__
