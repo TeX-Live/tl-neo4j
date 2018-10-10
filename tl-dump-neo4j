@@ -40,6 +40,13 @@ sub main
   my $tlpdb = TeXLive::TLPDB->new("root" => $Master);
   die "Cannot init tlpdb from $Master ..." unless defined($tlpdb);
 
+  # try to get basic information of tlpdb
+  my $tlpdbrevision = $tlpdb->config_revision;
+  if (! $tlpdbrevision) {
+    print STDERR "Cannot find revision of TLPDB, bailing out!\n";
+    exit 1;
+  }
+
   foreach my $pkg ($tlpdb->list_packages) {
     next if ($pkg =~ m/^00texlive/);  # ignore internal pkgs.
     # ignore *all* arch dep pacakges (also tlpsv etc.)
@@ -80,6 +87,10 @@ sub main
 
   mkdir("./out");
   my %fd;
+  open($fd{'TLPDB'}, ">:encoding(UTF-8)", "out/node-TLPDB.csv") || die("Cannot open out/node-TLPDB.csv: $!");
+  print { $fd{'TLPDB'} } "revision:ID\n";
+  print { $fd{'TLPDB'} } "$tlpdbrevision\n";
+
   for my $f (qw/Package Collection Scheme ConTeXt TLCore/) {
     open($fd{$f}, ">:encoding(UTF-8)", "out/node-$f.csv") || die("Cannot open out/node-$f.csv: $!");
     print { $fd{$f} } "uuid:ID,name,revision\n";
@@ -89,7 +100,9 @@ sub main
   open($fd{'depends'}, ">:encoding(UTF-8)", "out/edge-depends.csv") || die("Cannot open out/edge-depends.csv: $!");
   print { $fd{'depends'} } ":START_ID,:END_ID\n";
   open($fd{'contains'}, ">:encoding(UTF-8)", "out/edge-contains.csv") || die("Cannot open out/edge-contains.csv: $!");
-  print { $fd{'contains'} } ":START_ID,type,:END_ID\n";
+  print { $fd{'contains'} } ":START_ID,:END_ID\n";
+  open($fd{'includes'}, ">:encoding(UTF-8)", "out/edge-includes.csv") || die("Cannot open out/edge-includes.csv: $!");
+  print { $fd{'includes'} } ":START_ID,type,:END_ID\n";
 
 
   for my $pkg (keys %pkgs) {
@@ -97,6 +110,7 @@ sub main
     my $uid = $pkgs{$pkg}{'uuid'};
     my $ver = $pkgs{$pkg}{'revision'};
     print { $fd{$cat} } "$uid,$pkg,$ver\n";
+    print { $fd{'contains'} } "$tlpdbrevision,$uid\n";
     for my $dep (keys %{$pkgs{$pkg}{'depends'}}) {
       next if ($dep =~ m/\.ARCH$/);
       my $depuuid = $pkgs{$dep}{'uuid'};
@@ -114,7 +128,7 @@ sub main
       my $cuuid = $pkgs{$pkg}{'uuid'};
       if ($cuuid) {
         my $t = $fls{$f}{'contained'}{$pkg};
-        print { $fd{'contains'} } "$cuuid,$t,\"$f\"\n";
+        print { $fd{'includes'} } "$cuuid,$t,\"$f\"\n";
       } else {
         warn("Cannot find uuid for dependency $pkg for file $f\n");
       }
