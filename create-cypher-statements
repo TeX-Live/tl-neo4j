@@ -1,0 +1,79 @@
+#!/usr/bin/env perl
+# Copyright 2018 Norbert Preining
+# This file is licensed under the GNU General Public License version 2
+# or any later version.
+# 
+# Updates the Neo4j database from TeX Live Neo4j dumps
+#
+
+use strict;
+use Getopt::Long;
+
+my $opt_path  = "./out";
+
+GetOptions(
+  "path=s" => \$opt_path,
+) or die "Cannot parse command line: $!";
+
+
+exit (&main());
+
+sub main
+{
+  # check that all necessary files are available
+
+  my @files = qw/node-TLPDB.csv node-Collection.csv node-Scheme.csv node-Package.csv
+                 node-TLCore.csv node-ConTeXt.csv node-File.csv 
+                 edge-contains.csv edge-depends.csv edge-includes.csv/;
+
+  for my $f (@files) {
+    die "Cannot find $opt_path/$f: $?" if (! -r "$opt_path/$f");
+  }
+
+  print <<EOF
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-TLPDB.csv\" AS row 
+  MERGE (tlpdb:TLPDB { uuid: row.uuid, revision: toInt(row.revision) }) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Collection.csv\" AS row
+  MERGE (c:TLPackage:Collection { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Scheme.csv\" AS row
+  MERGE (c:TLPackage:Scheme { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Package.csv\" AS row
+  MERGE (c:TLPackage:Package { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-TLCore.csv\" AS row
+  MERGE (c:TLPackage:TLCore { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-ConTeXt.csv\" AS row
+  MERGE (c:TLPackage:ConTeXt { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-File.csv\" AS row 
+  MERGE (c:File { name: row.name }) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/edge-contains.csv\" AS row
+  MATCH (p:TLPDB { uuid: row.`:START_ID`}), (q:TLPackage { uuid: row.`:END_ID` } )
+  MERGE (p)-[r:contains]->(q) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/edge-depends.csv\" AS row
+  MATCH (p:TLPackage { uuid: row.`:START_ID`}), (q:TLPackage { uuid: row.`:END_ID` } )
+  MERGE (p)-[r:depends]->(q) ;
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM \"file:///$opt_path/edge-includes.csv\" AS row
+  MATCH (p:TLPackage { uuid: row.`:START_ID`}), (q:File { name: row.`:END_ID` } )
+  MERGE (p)-[r:includes {type: row.type}]->(q) ;
+EOF
+
+}
+

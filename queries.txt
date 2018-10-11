@@ -32,6 +32,15 @@ PROBLEM with new style:
 
 
 
+Search for files moved from one revision to the next
+match (t1:TLPDB) --> (p1:TLPackage) --> (f:File) <-- (p2:TLPackage) <-- (t2:TLPDB) 
+  where NOT p1.name = p2.name 
+  return t1, p1, f, p2, t2
+
+
+
+
+
 
 
 Using Graph Algorithms:
