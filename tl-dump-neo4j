@@ -30,10 +30,12 @@ use File::Path qw/make_path/;
 
 my $opt_initial = 0;
 my $opt_output  = "./out";
+my $opt_date = "";
 
 GetOptions(
   "initial!" => \$opt_initial,
   "output=s" => \$opt_output,
+  "date=s"   => \$opt_date,
 ) or die "Cannot parse command line: $!";
 
 
@@ -47,6 +49,8 @@ sub main
 
   my $idstr = ($opt_initial ? ":ID" : "");
   my $intstr = ($opt_initial ? ":int" : "");
+  my $boolstr = ($opt_initial ? ":boolean" : "");
+  my $datestr = ($opt_initial ? ":date" : "");
 
   my $tlpdb = TeXLive::TLPDB->new();
   $tlpdb->from_file($ARGV[0], verify => 0, media => "local_uncompressed");
@@ -102,8 +106,8 @@ sub main
   }
   my %fd;
   open($fd{'TLPDB'}, ">:encoding(UTF-8)", "$opt_output/node-TLPDB.csv") || die("Cannot open $opt_output/node-TLPDB.csv: $!");
-  print { $fd{'TLPDB'} } "uuid$idstr,revision$intstr\n";
-  print { $fd{'TLPDB'} } "tlpdb:$tlpdbrevision,$tlpdbrevision\n";
+  print { $fd{'TLPDB'} } "uuid$idstr,revision$intstr,date$datestr,current$boolstr\n";
+  print { $fd{'TLPDB'} } "tlpdb:$tlpdbrevision,$tlpdbrevision,$opt_date,true\n";
 
   if ($opt_initial) {
     open($fd{'TLPackage'}, ">:encoding(UTF-8)", "$opt_output/node-TLPackage.csv") || die("Cannot open $opt_output/node-TLPackage.csv: $!");

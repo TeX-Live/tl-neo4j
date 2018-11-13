@@ -31,9 +31,15 @@ sub main
   }
 
   print <<EOF
+
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-TLPDB.csv\" AS row 
-  MERGE (tlpdb:TLPDB { uuid: row.uuid, revision: toInt(row.revision) }) ;
+  MERGE (tlpdb:TLPDB { uuid: row.uuid, revision: toInt(row.revision), date: date(row.date), current: TRUE}) ;
+
+match (t:TLPDB {current: TRUE}), (t2:TLPDB {current: TRUE})
+  where t.revision < t2.revision
+  create (t) -[:next]-> (t2)
+  set t.current = false  ;
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Collection.csv\" AS row
@@ -74,6 +80,7 @@ LOAD CSV WITH HEADERS FROM \"file:///$opt_path/edge-includes.csv\" AS row
   MATCH (p:TLPackage { uuid: row.`:START_ID`}), (q:File { name: row.`:END_ID` } )
   MERGE (p)-[r:includes {type: row.type}]->(q) ;
 EOF
+
 
 }
 
