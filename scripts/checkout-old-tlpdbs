@@ -2,7 +2,8 @@
 #
 
 TL=/home/norbert/Development/TeX/texlive.git
-NR=10
+NR=${1-10}
+
 DEST=./tlpdb
 
 if [ ! -d $TL ] ; then
@@ -15,7 +16,7 @@ DEST=`realpath $DEST`
 
 cd $TL
 
-git log -10 --grep="autoupdate" --pretty=format:"%H %cd" --date=format:%Y-%m-%d | while read h d ; do
+git log -$NR --grep="autoupdate" --pretty=format:"%H %cd" --date=format:%Y-%m-%d | while read h d ; do
   echo "hash=$h,date=$d"
   mkdir -p $DEST/$d
   git checkout $h -- Master/tlpkg/texlive.tlpdb

@@ -11,21 +11,24 @@ if [ -z "$NEO4J_PASSWORD" ] ; then
   exit 1
 fi
 
-. scripts/generate-initial-graph
+first=$(/bin/ls -d tlpdb/20* | head -1)
+if [ ! -d $first ] ; then
+  echo "Not a directory: $first" >&2
+  exit 1
+fi
+
+scripts/generate-initial-graph "$first"
 
 sudo systemctl stop neo4j
 sudo rm -rf /var/lib/neo4j/data/databases/graph.db
-sudo mv ../graph.db /var/lib/neo4j/data/databases/
+sudo mv $first/graph.db /var/lib/neo4j/data/databases/
 sudo chown -R neo4j.adm /var/lib/neo4j/data/databases/graph.db
 sudo systemctl start neo4j
 sleep 5
 
-. scripts/initial-graph-post-procedure
-
-cd "$curdir"
-
-. scripts/generate-update-statements
-. scripts/update-graph
+scripts/initial-graph-post-procedure
+scripts/generate-update-statements
+scripts/update-graph
 
 
 

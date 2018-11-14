@@ -1,7 +1,12 @@
+#!/bin/bash
 
-for i in 08 09 10 11 12 13 14 15 ; do
-  ./tl-dump-neo4j --date="2018-10-$i" --output=tlpdb/2018-10-$i/out tlpdb/2018-10-$i/texlive.tlpdb
-  ./create-cypher-statements --path=tlpdb/2018-10-$i/out > tlpdb/2018-10-$i/cypher-import-statement
+todos=$(ls -d tlpdb/20* | tail -n +2)
+
+for todo in $todos ; do
+  i=$(echo $todo | cut -b 7-)
+  echo "Working on $todo"
+  ./tl-dump-neo4j --date="$i" --output=$todo/out $todo/texlive.tlpdb
+  ./create-cypher-statements --path=$todo/out > $todo/cypher-import-statement
 done
 
 

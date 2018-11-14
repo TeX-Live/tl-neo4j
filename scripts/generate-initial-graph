@@ -1,8 +1,15 @@
+#!/bin/bash
 
-rm -rf tlpdb/2018-10-07/out
-./tl-dump-neo4j --initial --date="2018-10-07" --output=tlpdb/2018-10-07/out tlpdb/2018-10-07/texlive.tlpdb
+first="$1"
+if [ ! -r "$first/texlive.tlpdb" ] ; then
+  echo "Cannot read $first/texlive.tlpdb" >&2
+  exit 1
+fi
+dtstr=$(echo $first | cut -b 7-)
+rm -rf "$first/out"
+./tl-dump-neo4j --initial --date="$dtstr" --output="$first/out" "$first/texlive.tlpdb"
 
-cd tlpdb/2018-10-07/out
+cd "$first/out"
 
 cmdline=
 for x in node-*.csv ; do
