@@ -11,25 +11,7 @@ if [ -z "$NEO4J_PASSWORD" ] ; then
   exit 1
 fi
 
-rm -rf tlpdb/2018-10-07/out
-./tl-dump-neo4j --initial --date="2018-10-07" --output=tlpdb/2018-10-07/out tlpdb/2018-10-07/texlive.tlpdb
-
-cd tlpdb/2018-10-07/out
-
-cmdline=
-for x in node-*.csv ; do
-  bn=`basename $x .csv`
-  n=`echo $bn | sed -e 's/^node-//'`
-  cmdline="$cmdline --nodes:$n $x"
-done
-for x in edge-*.csv ; do
-  bn=`basename $x .csv`
-  n=`echo $bn | sed -e 's/^edge-//'`
-  cmdline="$cmdline --relationships:$n $x"
-done
-
-rm -rf ../graph.db
-neo4j-import --into ../graph.db $cmdline
+. scripts/generate-initial-graph
 
 sudo systemctl stop neo4j
 sudo rm -rf /var/lib/neo4j/data/databases/graph.db
@@ -38,28 +20,13 @@ sudo chown -R neo4j.adm /var/lib/neo4j/data/databases/graph.db
 sudo systemctl start neo4j
 sleep 5
 
-echo "
-MATCH (p) REMOVE p.uuid ;
-
-CREATE INDEX ON :TLPDB(revision) ;
-CREATE INDEX ON :TLPOBJ(name, revision) ;
-CREATE INDEX ON :TLPSRC(name) ;
-CREATE INDEX ON :TLCore(name, revision) ;
-CREATE INDEX ON :Collection(name, revision) ; 
-CREATE INDEX ON :ConTeXt(name, revision) ; 
-CREATE INDEX ON :Package(name, revision) ; 
-CREATE INDEX ON :Scheme(name, revision) ; 
-CREATE INDEX ON :File(name) ;
-" | cypher-shell
-
+. scripts/initial-graph-post-procedure
 
 cd "$curdir"
 
-for i in 08 09 10 11 12 13 14 15 ; do
-  ./tl-dump-neo4j --date="2018-10-$i" --output=tlpdb/2018-10-$i/out tlpdb/2018-10-$i/texlive.tlpdb
-  ./create-cypher-statements --path=tlpdb/2018-10-$i/out > tlpdb/2018-10-$i/cypher-import-statement
-  cat tlpdb/2018-10-$i/cypher-import-statement | cypher-shell
-done
+. scripts/generate-update-statements
+. scripts/update-graph
+
 
 
 

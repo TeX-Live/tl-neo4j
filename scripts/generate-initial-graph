@@ -1,4 +1,5 @@
 
+rm -rf tlpdb/2018-10-07/out
 ./tl-dump-neo4j --initial --date="2018-10-07" --output=tlpdb/2018-10-07/out tlpdb/2018-10-07/texlive.tlpdb
 
 cd tlpdb/2018-10-07/out
@@ -15,7 +16,7 @@ for x in edge-*.csv ; do
   cmdline="$cmdline --relationships:$n $x"
 done
 
+rm -rf ../graph.db
 neo4j-import --into ../graph.db $cmdline
 
-echo "WARNING: after activation TLPSRC and instanceOf needs to be created!!!"
 

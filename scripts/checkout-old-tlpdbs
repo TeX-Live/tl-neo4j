@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+
+TL=/home/norbert/Development/TeX/texlive.git
+NR=10
+DEST=./tlpdb
+
+if [ ! -d $TL ] ; then
+  echo "Not a directory $TL, exit." >&2
+  exit 1
+fi
+
+mkdir -p $DEST
+DEST=`realpath $DEST`
+
+cd $TL
+
+git log -10 --grep="autoupdate" --pretty=format:"%H %cd" --date=format:%Y-%m-%d | while read h d ; do
+  echo "hash=$h,date=$d"
+  mkdir -p $DEST/$d
+  git checkout $h -- Master/tlpkg/texlive.tlpdb
+  cp Master/tlpkg/texlive.tlpdb $DEST/$d/
+done
