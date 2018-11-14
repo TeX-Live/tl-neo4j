@@ -7,11 +7,6 @@
 #
 # TODO
 # for now we ignore .win32 packages
-# Cannot find uuid for dependency texlive.infra
-# Cannot find uuid for dependency texlive.infra
-# Cannot find uuid for dependency texlive.infra
-# Cannot find uuid for dependency dviout.win32
-# Cannot find uuid for dependency wintools.win32
 
 
 my $Master;
@@ -66,7 +61,7 @@ sub main
   foreach my $pkg ($tlpdb->list_packages) {
     next if ($pkg =~ m/^00texlive/);  # ignore internal pkgs.
     # ignore *all* arch dep pacakges (also tlpsv etc.)
-    next if ($pkg =~ m/\./);
+    next if ($pkg ne "texlive.infra" && $pkg =~ m/\./);
 
     my $tlp = $tlpdb->get_package($pkg);
     if (!defined($tlp)) {
@@ -110,42 +105,64 @@ sub main
   print { $fd{'TLPDB'} } "tlpdb:$tlpdbrevision,$tlpdbrevision,$opt_date,true\n";
 
   if ($opt_initial) {
-    open($fd{'TLPackage'}, ">:encoding(UTF-8)", "$opt_output/node-TLPackage.csv") || die("Cannot open $opt_output/node-TLPackage.csv: $!");
-    print { $fd{'TLPackage'} } "uuid$idstr,name,revision$intstr,:LABEL\n";
+    open($fd{'TLPOBJ'}, ">:encoding(UTF-8)", "$opt_output/node-TLPOBJ.csv") || die("Cannot open $opt_output/node-TLPOBJ.csv: $!");
+    print { $fd{'TLPOBJ'} } "uuid$idstr,name,revision$intstr,:LABEL\n";
+    open($fd{'TLPSRC'}, ">:encoding(UTF-8)", "$opt_output/node-TLPSRC.csv") || die("Cannot open $opt_output/node-TLPSRC.csv: $!");
+    print { $fd{'TLPSRC'} } "name$idstr,:LABEL\n";
   } else {
     for my $f (qw/Package Collection Scheme ConTeXt TLCore/) {
       open($fd{$f}, ">:encoding(UTF-8)", "$opt_output/node-$f.csv") || die("Cannot open $opt_output/node-$f.csv: $!");
-      print { $fd{$f} } "uuid$idstr,name,revision$intstr\n";
+      print { $fd{$f} } "name,revision$intstr\n";
     }
   }
 
   open($fd{'File'}, ">:encoding(UTF-8)", "$opt_output/node-File.csv") || die("Cannot open $opt_output/node-File.csv: $!");
   print { $fd{'File'} } "name$idstr\n";
   open($fd{'depends'}, ">:encoding(UTF-8)", "$opt_output/edge-depends.csv") || die("Cannot open $opt_output/edge-depends.csv: $!");
-  print { $fd{'depends'} } ":START_ID,:END_ID\n";
   open($fd{'contains'}, ">:encoding(UTF-8)", "$opt_output/edge-contains.csv") || die("Cannot open $opt_output/edge-contains.csv: $!");
-  print { $fd{'contains'} } ":START_ID,:END_ID\n";
   open($fd{'includes'}, ">:encoding(UTF-8)", "$opt_output/edge-includes.csv") || die("Cannot open $opt_output/edge-includes.csv: $!");
-  print { $fd{'includes'} } ":START_ID,type,:END_ID\n";
 
+  if ($opt_initial) {
+    print { $fd{'depends'} } ":START_ID,:END_ID\n";
+    print { $fd{'contains'} } ":START_ID,:END_ID\n";
+    print { $fd{'includes'} } ":START_ID,type,:END_ID\n";
+  } else {
+    print { $fd{'depends'} } "apkg,aver,bpkg,bver\n";
+    print { $fd{'contains'} } "tlpdbver,pkg,ver\n";
+    print { $fd{'includes'} } "pkg,ver,type,file\n";
+  }
+
+  if ($opt_initial) {
+    open($fd{'instanceOf'}, ">:encoding(UTF-8)", "$opt_output/edge-instanceOf.csv") || die("Cannot open $opt_output/edge-instanceOf.csv: $!");
+    print { $fd{'instanceOf'} } ":START_ID,:END_ID\n";
+  }
 
   for my $pkg (keys %pkgs) {
     my $cat = $pkgs{$pkg}{'category'};
     my $uid = $pkgs{$pkg}{'uuid'};
     my $ver = $pkgs{$pkg}{'revision'};
     if ($opt_initial) {
-      print { $fd{'TLPackage'} } "$uid,$pkg,$ver,$cat\n";
+      print { $fd{'TLPOBJ'} } "$uid,$pkg,$ver,$cat\n";
+      print { $fd{'TLPSRC'} } "$pkg,$cat\n";
+      print { $fd{'contains'} } "tlpdb:$tlpdbrevision,$uid\n";
+      print { $fd{'instanceOf'} } "$uid,$pkg\n";
     } else {
-      print { $fd{$cat}        } "$uid,$pkg,$ver\n";
+      print { $fd{$cat}        } "$pkg,$ver\n";
+      print { $fd{'contains'} } "$tlpdbrevision,$pkg,$ver\n";
     }
-    print { $fd{'contains'} } "tlpdb:$tlpdbrevision,$uid\n";
     for my $dep (keys %{$pkgs{$pkg}{'depends'}}) {
       next if ($dep =~ m/\.ARCH$/);
-      my $depuuid = $pkgs{$dep}{'uuid'};
-      if ($depuuid) {
+      next if ($dep =~ m/\.win32$/);
+      if ($opt_initial) {
+        my $depuuid = $pkgs{$dep}{'uuid'};
+        if ($depuuid) {
           print { $fd{'depends'} } "$uid,$depuuid\n";
+        } else {
+          warn("Cannot find uuid for dependency $dep\n");
+        }
       } else {
-        warn("Cannot find uuid for dependency $dep\n");
+        my $depver = $pkgs{$dep}{'revision'};
+        print { $fd{'depends'} } "$pkg,$ver,$dep,$depver\n";
       }
     }
   }
@@ -153,12 +170,17 @@ sub main
   for my $f (keys %fls) {
     print { $fd{'File'} } "\"$f\"\n";
     for my $pkg (keys %{$fls{$f}{'contained'}}) {
-      my $cuuid = $pkgs{$pkg}{'uuid'};
-      if ($cuuid) {
-        my $t = $fls{$f}{'contained'}{$pkg};
-        print { $fd{'includes'} } "$cuuid,$t,\"$f\"\n";
+      my $t = $fls{$f}{'contained'}{$pkg};
+      if ($opt_initial) {
+        my $cuuid = $pkgs{$pkg}{'uuid'};
+        if ($cuuid) {
+          print { $fd{'includes'} } "$cuuid,$t,\"$f\"\n";
+        } else {
+          warn("Cannot find uuid for dependency $pkg for file $f\n");
+        }
       } else {
-        warn("Cannot find uuid for dependency $pkg for file $f\n");
+        my $pver = $pkgs{$pkg}{'revision'};
+        print { $fd{'includes'} } "$pkg,$pver,$t,\"$f\"\n";
       }
     }
   }

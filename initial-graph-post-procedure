@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ -z "$NEO4J_USERNAME" ] ; then
+  echo "need NEO4J_USERNAME environment variable, exiting!" >&2
+  exit 1
+fi
+if [ -z "$NEO4J_PASSWORD" ] ; then
+  echo "need NEO4J_PASSWORD environment variable, exiting!" >&2
+  exit 1
+fi
+echo "
+MATCH (p) REMOVE p.uuid ;
+
+CREATE INDEX ON :TLPDB(revision) ;
+CREATE INDEX ON :TLPOBJ(name, revision) ;
+CREATE INDEX ON :TLPSRC(name) ;
+CREATE INDEX ON :TLCore(name, revision) ;
+CREATE INDEX ON :Collection(name, revision) ; 
+CREATE INDEX ON :ConTeXt(name, revision) ; 
+CREATE INDEX ON :Package(name, revision) ; 
+CREATE INDEX ON :Scheme(name, revision) ; 
+CREATE INDEX ON :File(name) ;
+" | cypher-shell

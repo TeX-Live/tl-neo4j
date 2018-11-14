@@ -1,3 +1,19 @@
+
+
+Get rid of uuid
+---------------
+
+on initial import we know that there is only one instance of all, so we can use
+the "name" as ID
+
+on updates we put the name,rev of both packages into the relation csv and the
+cypher does a match on name and rev.
+
+This way, we can get rid of all uuids...
+
+
+============================
+
 check statements:
 LOAD CSV WITH HEADERS FROM "file:///tlpdb/48871/out/node-TLPDB.csv" AS row RETURN toInt(row.revision) ;
 

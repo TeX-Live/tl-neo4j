@@ -34,7 +34,7 @@ sub main
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-TLPDB.csv\" AS row 
-  MERGE (tlpdb:TLPDB { uuid: row.uuid, revision: toInt(row.revision), date: date(row.date), current: TRUE}) ;
+  MERGE (tlpdb:TLPDB { revision: toInt(row.revision), date: date(row.date), current: TRUE}) ;
 
 match (t:TLPDB {current: TRUE}), (t2:TLPDB {current: TRUE})
   where t.revision < t2.revision
@@ -43,53 +43,33 @@ match (t:TLPDB {current: TRUE}), (t2:TLPDB {current: TRUE})
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Collection.csv\" AS row
-  MERGE (c:TLPackage:Collection { uuid: row.uuid, name: row.name, revision: toInt(row.revision) })
-  MERGE (cc:TLPackageSrc:Collection { name: row.name }) ;
-USING PERIODIC COMMIT 1000
-LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Collection.csv\" AS row
-  MATCH (c:TLPackage:Collection { uuid: row.uuid, name: row.name, revision: toInt(row.revision) })
-  MATCH (cc:TLPackageSrc:Collection { name: row.name })
-  MERGE (cc) -[:is_instance]-> (c) ;
+  MERGE (cc:TLPOBJ:Collection { name: row.name, revision: toInt(row.revision) })
+  MERGE (c:TLPSRC:Collection { name: row.name }) 
+  MERGE (cc) -[:instanceOf]-> (c) ;
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Scheme.csv\" AS row
-  MERGE (c:TLPackage:Scheme { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) 
-  MERGE (cc:TLPackageSrc:Scheme { name: row.name }) ;
-USING PERIODIC COMMIT 1000
-LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Scheme.csv\" AS row
-  MATCH (c:TLPackage:Scheme { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) 
-  MATCH (cc:TLPackageSrc:Scheme { name: row.name }) 
-  MERGE (cc) -[:is_instance]-> (c) ;
+  MERGE (cc:TLPOBJ:Scheme { name: row.name, revision: toInt(row.revision) }) 
+  MERGE (c:TLPSRC:Scheme { name: row.name }) 
+  MERGE (cc) -[:instanceOf]-> (c) ;
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Package.csv\" AS row
-  MERGE (c:TLPackage:Package { uuid: row.uuid, name: row.name, revision: toInt(row.revision) })
-  MERGE (c:TLPackageSrc:Package { name: row.name }) ;
-USING PERIODIC COMMIT 1000
-LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-Package.csv\" AS row
-  MATCH (c:TLPackage:Package { uuid: row.uuid, name: row.name, revision: toInt(row.revision) })
-  MATCH (c:TLPackageSrc:Package { name: row.name })
-  MERGE (cc) -[:is_instance]-> (c) ;
+  MERGE (cc:TLPOBJ:Package { name: row.name, revision: toInt(row.revision) })
+  MERGE (c:TLPSRC:Package { name: row.name }) 
+  MERGE (cc) -[:instanceOf]-> (c) ;
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-TLCore.csv\" AS row
-  MERGE (c:TLPackage:TLCore { uuid: row.uuid, name: row.name, revision: toInt(row.revision) })
-  MERGE (c:TLPackageSrc:TLCore { name: row.name }) ;
-USING PERIODIC COMMIT 1000
-LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-TLCore.csv\" AS row
-  MATCH (c:TLPackage:TLCore { uuid: row.uuid, name: row.name, revision: toInt(row.revision) })
-  MATCH (c:TLPackageSrc:TLCore { name: row.name })
-  MERGE (cc) -[:is_instance]-> (c) ;
+  MERGE (cc:TLPOBJ:TLCore { name: row.name, revision: toInt(row.revision) })
+  MERGE (c:TLPSRC:TLCore { name: row.name }) 
+  MERGE (cc) -[:instanceOf]-> (c) ;
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-ConTeXt.csv\" AS row
-  MERGE (c:TLPackage:ConTeXt { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) 
-  MERGE (c:TLPackage:ConTeXt { name: row.name }) ;
-USING PERIODIC COMMIT 1000
-LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-ConTeXt.csv\" AS row
-  MATCH (c:TLPackage:ConTeXt { uuid: row.uuid, name: row.name, revision: toInt(row.revision) }) 
-  MATCH (c:TLPackage:ConTeXt { name: row.name })
-  MERGE (cc) -[:is_instance]-> (c) ;
+  MERGE (cc:TLPOBJ:ConTeXt { name: row.name, revision: toInt(row.revision) }) 
+  MERGE (c:TLPSRC:ConTeXt { name: row.name }) 
+  MERGE (cc) -[:instanceOf]-> (c) ;
 
 
 USING PERIODIC COMMIT 1000
@@ -98,18 +78,19 @@ LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-File.csv\" AS row
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/edge-contains.csv\" AS row
-  MATCH (p:TLPDB { uuid: row.`:START_ID`}), (q:TLPackage { uuid: row.`:END_ID` } )
+  MATCH (p:TLPDB { revision: toInt(row.tlpdbver)}), (q:TLPOBJ { name: row.pkg, revision: toInt(row.ver) } )
   MERGE (p)-[r:contains]->(q) ;
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/edge-depends.csv\" AS row
-  MATCH (p:TLPackage { uuid: row.`:START_ID`}), (q:TLPackage { uuid: row.`:END_ID` } )
-  MERGE (p)-[r:depends]->(q) ;
+  MATCH (a:TLPOBJ { name: row.apkg, revision: toInt(row.aver) }), 
+        (b:TLPOBJ { name: row.bpkg, revision: toInt(row.bver) })
+  MERGE (a)-[r:depends]->(b) ;
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/edge-includes.csv\" AS row
-  MATCH (p:TLPackage { uuid: row.`:START_ID`}), (q:File { name: row.`:END_ID` } )
-  MERGE (p)-[r:includes {type: row.type}]->(q) ;
+  MATCH (a:TLPOBJ { name: row.pkg, revision: toInt(row.ver) }),  (q:File { name: row.file } )
+  MERGE (a)-[r:includes {type: row.type}]->(q) ;
 EOF
 
 

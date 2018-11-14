@@ -1,18 +1,20 @@
+#!/bin/bash
 
-if [ -d out ] ; then
-  echo "out directory exits, exiting." >&2
+curdir=$(pwd)
+
+if [ -z "$NEO4J_USERNAME" ] ; then
+  echo "need NEO4J_USERNAME environment variable, exiting!" >&2
   exit 1
 fi
-if [ -d graphdb ] ; then
-  echo "graphdb directory exits, exiting." >&2
+if [ -z "$NEO4J_PASSWORD" ] ; then
+  echo "need NEO4J_PASSWORD environment variable, exiting!" >&2
   exit 1
 fi
-mkdir out
-mkdir graphdb
 
-./tl-dump-neo4j ~/Development/TeX/texlive.git/Master
+rm -rf tlpdb/2018-10-07/out
+./tl-dump-neo4j --initial --date="2018-10-07" --output=tlpdb/2018-10-07/out tlpdb/2018-10-07/texlive.tlpdb
 
-cd out
+cd tlpdb/2018-10-07/out
 
 cmdline=
 for x in node-*.csv ; do
@@ -26,6 +28,39 @@ for x in edge-*.csv ; do
   cmdline="$cmdline --relationships:$n $x"
 done
 
-neo4j-import --into ../graphdb $cmdline
+rm -rf ../graph.db
+neo4j-import --into ../graph.db $cmdline
+
+sudo systemctl stop neo4j
+sudo rm -rf /var/lib/neo4j/data/databases/graph.db
+sudo mv ../graph.db /var/lib/neo4j/data/databases/
+sudo chown -R neo4j.adm /var/lib/neo4j/data/databases/graph.db
+sudo systemctl start neo4j
+sleep 5
+
+echo "
+MATCH (p) REMOVE p.uuid ;
+
+CREATE INDEX ON :TLPDB(revision) ;
+CREATE INDEX ON :TLPOBJ(name, revision) ;
+CREATE INDEX ON :TLPSRC(name) ;
+CREATE INDEX ON :TLCore(name, revision) ;
+CREATE INDEX ON :Collection(name, revision) ; 
+CREATE INDEX ON :ConTeXt(name, revision) ; 
+CREATE INDEX ON :Package(name, revision) ; 
+CREATE INDEX ON :Scheme(name, revision) ; 
+CREATE INDEX ON :File(name) ;
+" | cypher-shell
+
+
+cd "$curdir"
+
+for i in 08 09 10 11 12 13 14 15 ; do
+  ./tl-dump-neo4j --date="2018-10-$i" --output=tlpdb/2018-10-$i/out tlpdb/2018-10-$i/texlive.tlpdb
+  ./create-cypher-statements --path=tlpdb/2018-10-$i/out > tlpdb/2018-10-$i/cypher-import-statement
+  cat tlpdb/2018-10-$i/cypher-import-statement | cypher-shell
+done
+
+
 
 

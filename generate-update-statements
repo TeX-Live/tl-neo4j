@@ -1,0 +1,8 @@
+
+for i in 08 09 10 11 12 13 14 15 ; do
+  ./tl-dump-neo4j --date="2018-10-$i" --output=tlpdb/2018-10-$i/out tlpdb/2018-10-$i/texlive.tlpdb
+  ./create-cypher-statements --path=tlpdb/2018-10-$i/out > tlpdb/2018-10-$i/cypher-import-statement
+done
+
+
+

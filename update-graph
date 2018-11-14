@@ -1,0 +1,20 @@
+
+if [ -z "$NEO4J_USERNAME" ] ; then
+  echo "need NEO4J_USERNAME environment variable, exiting!" >&2
+  exit 1
+fi
+if [ -z "$NEO4J_PASSWORD" ] ; then
+  echo "need NEO4J_PASSWORD environment variable, exiting!" >&2
+  exit 1
+fi
+for i in 08 09 10 11 12 13 14 15 ; do
+  if [ ! -r tlpdb/2018-10-$i/cypher-import-statement ] ; then
+    echo "not found: tlpdb/2018-10-$i/cypher-import-statement, exiting!" >&2
+    exit 1
+  fi
+  echo "Running cypher statements tlpdb/2018-10-$i/cypher-import-statement"
+  cat tlpdb/2018-10-$i/cypher-import-statement | cypher-shell
+done
+
+
+
