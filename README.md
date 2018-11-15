@@ -15,9 +15,9 @@ There are several types of nodes (labels):
   - `TLPDB`: represents a TeX Live Database on a certain time/svn revision.
      The attributes are: 
 
-     . `date` (a Neo4j `Date` object) gives the date the tlpdb was created
-     . `current` (Bool) whether it is the latest version of the tlpdb
-     . `revision` (Integer) the revision of the tlpdb
+     - `date` (a Neo4j `Date` object) gives the date the tlpdb was created
+     - `current` (Bool) whether it is the latest version of the tlpdb
+     - `revision` (Integer) the revision of the tlpdb
 
 then there are nodes with each of them having two labels attached, one either
 begin `TLPOBJ` or `TLPSRC`, the other is one of `Scheme`, `Collection`,
@@ -26,8 +26,8 @@ of TeX Live.
 
   - `TLPOBJ` has attributes:
 
-    . `name` (String) the name of the package
-    . `revision` (Integer) the revision of the package
+    - `name` (String) the name of the package
+    - `revision` (Integer) the revision of the package
 
   - `TLPSRC` has only one attribute, `name` (as above)
 
