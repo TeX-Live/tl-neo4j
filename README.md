@@ -59,6 +59,62 @@ Most of the TeX Live Databases from 2018 have been included into a graph and
 it is available at http://texlive.info:7474/browser/ (user/pass: neo4j) in
 read-only mode.
 
+Sample queries
+--------------
+
+Get the updates between the current tlpdb and the previous one
+
+```
+ match (prDB:TLPDB) -[:next]-> (nxDB:TLPDB {current:TRUE}), 
+       p=(prDB)-->(pkg:TLPOBJ)-->(src:TLPSRC)<--(p2:TLPOBJ)<--(nxDB) 
+  return p ;
+```
+
+
+Get the number of updates of the `bidi` package over the whole recorded time
+(`count(p)` returns the number of different packages, so by subtracting we
+obtain the number of updates):
+
+```
+  match (p:TLPOBJ {name:"bidi"}) return count(p)-1
+```
+
+Same as above, but only for a certain month:
+
+```
+  match (tlpdb:TLPDB) --> (p:TLPOBJ {name:"bidi"}) where tlpdb.date.month == 10
+    return count(p);
+```
+
+Get the list of all packages order by the number of updates in the full
+period:
+
+```
+  match (tlpdb:TLPDB) --> (p:TLPOBJ:Package)
+  with p.name as pkg,count(DISTINCT p)-1 as updates
+  where updates > 0
+  return pkg,updates order by -updates
+```
+
+Output for a database that comprises 2018-01-01 till 2018-11-14:
+
+│ pkg │ updates │
+| --- | ------- |
+│ tex4ht            │ 37 │
+│ bidi              │ 26 │
+│ l3build           │ 19 │
+│ lwarp             │ 15 │
+│ xepersian         │ 14 │
+│ reledmac          │ 13 │
+│ l3kernel          │ 13 │
+│ babel             │ 12 │
+│ platex            │ 11 │
+│ glossaries-extra  │ 11 │
+│ witharrows        │ 11 │
+│ luatexja          │ 10 │
+│ fontawesome5      │ 10 │
+
+
 
 Code
 ----
@@ -68,6 +124,7 @@ either be used to create the initial version of a database using the Neo4j
 import tool, or further processes by `create-cypher-statements` to convert
 into a set of cypher code that updates a already present graph with new information
 from a tlpdb. See `do-all` on how to convert a large set of tlpdbs into a graph.
+Other scripts in `scripts` are used from `do-all`.
 
 Documentation
 -------------
