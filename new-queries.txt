@@ -1,0 +1,48 @@
+
+
+get current tlpdb
+	match (p:TLPDB {current: TRUE}) return p ;
+
+get updates between the previous and the current tlpdb
+    match (prDB:TLPDB) -[:next]-> (nxDB:TLPDB {current:TRUE}), 
+          p=(prDB)-->(pkg:TLPOBJ)-->(src:TLPSRC)<--(p2:TLPOBJ)<--(nxDB) 
+   return p ;
+
+get number of updates in the whole time frame
+	match (p:TLPOBJ {name:"bidi"}) return count(p)
+
+get number of updates in a certain month
+	match (tlpdb:TLPDB) --> (p:TLPOBJ {name:"bidi"}) where tlpdb.date.month == 10
+    return count(p);
+
+get list of packages and updates in a month, order by number
+(the -1 is here because 1 pkg in the month means no update)
+	match (tlpdb:TLPDB) --> (p:TLPOBJ:Package) where tlpdb.date.month = 10
+	with p.name as pkg,count(DISTINCT p)-1 as updates
+	where updates > 0
+	return pkg,updates order by -updates
+
+get list of all packages and number of updates in the database
+but only of normal Packages
+	match (tlpdb:TLPDB) --> (p:TLPOBJ:Package)
+	with p.name as pkg,count(DISTINCT p)-1 as updates
+	where updates > 0
+	return pkg,updates order by -updates
+
+Output:
+╒════════════════════════════════╤═════════╕
+│"pkg"                           │"updates"│
+╞════════════════════════════════╪═════════╡
+│"tex4ht"                        │37       │
+│"bidi"                          │26       │
+│"l3build"                       │19       │
+│"lwarp"                         │15       │
+│"xepersian"                     │14       │
+│"reledmac"                      │13       │
+│"l3kernel"                      │13       │
+│"babel"                         │12       │
+│"platex"                        │11       │
+│"glossaries-extra"              │11       │
+│"witharrows"                    │11       │
+│"luatexja"                      │10       │
+│"fontawesome5"                  │10       │
