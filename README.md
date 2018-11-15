@@ -14,6 +14,7 @@ There are several types of nodes (labels):
   - `File`: only attribute is `name`
   - `TLPDB`: represents a TeX Live Database on a certain time/svn revision.
      The attributes are: 
+
      . `date` (a Neo4j `Date` object) gives the date the tlpdb was created
      . `current` (Bool) whether it is the latest version of the tlpdb
      . `revision` (Integer) the revision of the tlpdb
@@ -24,8 +25,10 @@ begin `TLPOBJ` or `TLPSRC`, the other is one of `Scheme`, `Collection`,
 of TeX Live.
 
   - `TLPOBJ` has attributes:
+
     . `name` (String) the name of the package
     . `revision` (Integer) the revision of the package
+
   - `TLPSRC` has only one attribute, `name` (as above)
 
 Relations
@@ -53,7 +56,7 @@ Access to the resulting graph
 -----------------------------
 
 Most of the TeX Live Databases from 2018 have been included into a graph and
-it is available at http://texlive.info:7474/browser/（user/pass: neo4j) in
+it is available at http://texlive.info:7474/browser/ (user/pass: neo4j) in
 read-only mode.
 
 
