@@ -98,21 +98,22 @@ period:
 
 Output for a database that comprises 2018-01-01 till 2018-11-14:
 
-│ pkg │ updates │
+
+| pkg | updates |
 | --- | ------- |
-│ tex4ht            │ 37 │
-│ bidi              │ 26 │
-│ l3build           │ 19 │
-│ lwarp             │ 15 │
-│ xepersian         │ 14 │
-│ reledmac          │ 13 │
-│ l3kernel          │ 13 │
-│ babel             │ 12 │
-│ platex            │ 11 │
-│ glossaries-extra  │ 11 │
-│ witharrows        │ 11 │
-│ luatexja          │ 10 │
-│ fontawesome5      │ 10 │
+| tex4ht            | 37 |
+| bidi              | 26 |
+| l3build           | 19 |
+| lwarp             | 15 |
+| xepersian         | 14 |
+| reledmac          | 13 |
+| l3kernel          | 13 |
+| babel             | 12 |
+| platex            | 11 |
+| glossaries-extra  | 11 |
+| witharrows        | 11 |
+| luatexja          | 10 |
+| fontawesome5      | 10 |
 
 
 
