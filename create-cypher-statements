@@ -34,7 +34,7 @@ sub main
 
 USING PERIODIC COMMIT 1000
 LOAD CSV WITH HEADERS FROM \"file:///$opt_path/node-TLPDB.csv\" AS row 
-  MERGE (tlpdb:TLPDB { revision: toInt(row.revision), date: date(row.date), current: TRUE}) ;
+  MERGE (tlpdb:TLPDB { revision: toInt(row.revision), date: datetime(row.date), current: TRUE}) ;
 
 match (t:TLPDB {current: TRUE}), (t2:TLPDB {current: TRUE})
   where t.revision < t2.revision

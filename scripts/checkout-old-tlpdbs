@@ -4,6 +4,12 @@
 TL=/home/norbert/Development/TeX/texlive.git
 NR=${1-10}
 
+if [ $NR = "all" ] ; then
+  NR=""
+else
+  NR="-$NR"
+fi
+
 DEST=./tlpdb
 
 if [ ! -d $TL ] ; then
@@ -16,7 +22,10 @@ DEST=`realpath $DEST`
 
 cd $TL
 
-git log -$NR --grep="autoupdate" --pretty=format:"%H %cd" --date=format:%Y-%m-%d | while read h d ; do
+# the date format neets to be parseable as
+#	DateTime
+# in Neo4j (function datetime)
+git log $NR --pretty=format:"%H %cd" --date=format:%FT%R%z Master/tlpkg/texlive.tlpdb | while read h d ; do
   echo "hash=$h,date=$d"
   mkdir -p $DEST/$d
   git checkout $h -- Master/tlpkg/texlive.tlpdb
