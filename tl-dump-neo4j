@@ -45,7 +45,7 @@ sub main
   my $idstr = ($opt_initial ? ":ID" : "");
   my $intstr = ($opt_initial ? ":int" : "");
   my $boolstr = ($opt_initial ? ":boolean" : "");
-  my $datestr = ($opt_initial ? ":date" : "");
+  my $datestr = ($opt_initial ? ":datetime" : "");
 
   my $tlpdb = TeXLive::TLPDB->new();
   $tlpdb->from_file($ARGV[0], verify => 0, media => "local_uncompressed");
@@ -161,8 +161,12 @@ sub main
           warn("Cannot find uuid for dependency $dep\n");
         }
       } else {
-        my $depver = $pkgs{$dep}{'revision'};
-        print { $fd{'depends'} } "$pkg,$ver,$dep,$depver\n";
+        if (defined($pkgs{$dep})) {
+          my $depver = $pkgs{$dep}{'revision'};
+          print { $fd{'depends'} } "$pkg,$ver,$dep,$depver\n";
+        } else {
+          print "Cannot find dependency $dep\n";
+        }
       }
     }
   }

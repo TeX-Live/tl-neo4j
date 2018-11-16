@@ -96,24 +96,18 @@ period:
   return pkg,updates order by -updates
 ```
 
-Output for a database that comprises 2018-01-01 till 2018-11-14:
-
+Output for a database that comprises 2009-05-24 till 2018-11-14:
 
 | pkg | updates |
 | --- | ------- |
-| tex4ht            | 37 |
-| bidi              | 26 |
-| l3build           | 19 |
-| lwarp             | 15 |
-| xepersian         | 14 |
-| reledmac          | 13 |
-| l3kernel          | 13 |
-| babel             | 12 |
-| platex            | 11 |
-| glossaries-extra  | 11 |
-| witharrows        | 11 |
-| luatexja          | 10 |
-| fontawesome5      | 10 |
+| bidi        | 185      |
+| dvips       | 172      |
+| tex4ht      | 152      |
+| context     | 134      |
+| siunitx     | 133      |
+| xepersian   | 125      |
+| pstricks    | 110      |
+| newtx       | 104      |
 
 
 
