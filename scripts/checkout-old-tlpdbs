@@ -27,6 +27,10 @@ cd $TL
 # in Neo4j (function datetime)
 git log $NR --pretty=format:"%H %cd" --date=format:%FT%R%z Master/tlpkg/texlive.tlpdb | while read h d ; do
   echo "hash=$h,date=$d"
+  if [ -d $DEST/$d ] ; then
+    echo "$DEST/$d already present, skipping"
+    continue
+  fi
   mkdir -p $DEST/$d
   git checkout $h -- Master/tlpkg/texlive.tlpdb
   cp Master/tlpkg/texlive.tlpdb $DEST/$d/

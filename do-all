@@ -17,12 +17,13 @@ if [ ! -d $first ] ; then
   exit 1
 fi
 
-scripts/generate-initial-graph "$first"
-
 sudo systemctl stop neo4j
-sudo rm -rf /var/lib/neo4j/data/databases/graph.db
-sudo mv $first/graph.db /var/lib/neo4j/data/databases/
-sudo chown -R neo4j.adm /var/lib/neo4j/data/databases/graph.db
+sudo rm -rf /var/lib/neo4j/data/databases/neo4j/*
+sudo rm -rf /var/lib/neo4j/data/transactions/neo4j/*
+scripts/generate-initial-graph "$first"
+# make sure we have correct permissions
+chown neo4j.neo4j /var/lib/neo4j/data/databases/neo4j/*
+chown neo4j.neo4j /var/log/neo4j/*
 sudo systemctl start neo4j
 sleep 5
 
