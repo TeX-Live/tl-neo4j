@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# Copyright 2018 Norbert Preining
+# Copyright 2018-2021 Norbert Preining
 # This file is licensed under the GNU General Public License version 2
 # or any later version.
 # 
@@ -23,15 +23,22 @@ use TeXLive::TLUtils;
 use Getopt::Long;
 use File::Path qw/make_path/;
 
+my $opt_old = 0;
 my $opt_initial = 0;
 my $opt_output  = "./out";
 my $opt_date = "";
 
+if ($opt_old && $opt_initial) {
+  die "Cannot do both old and initial!";
+}
+
 GetOptions(
+  "old!"     => \$opt_old,
   "initial!" => \$opt_initial,
   "output=s" => \$opt_output,
   "date=s"   => \$opt_date,
 ) or die "Cannot parse command line: $!";
+
 
 
 exit (&main());
@@ -41,11 +48,12 @@ sub main
 {
   my %pkgs;
   my %fls;
+  my %allcats;
 
-  my $idstr = ($opt_initial ? ":ID" : "");
-  my $intstr = ($opt_initial ? ":int" : "");
-  my $boolstr = ($opt_initial ? ":boolean" : "");
-  my $datestr = ($opt_initial ? ":datetime" : "");
+  my $idstr = (($opt_initial || $opt_old) ? ":ID" : "");
+  my $intstr = (($opt_initial || $opt_old) ? ":int" : "");
+  my $boolstr = (($opt_initial || $opt_old) ? ":boolean" : "");
+  my $datestr = (($opt_initial || $opt_old) ? ":datetime" : "");
 
   my $tlpdb = TeXLive::TLPDB->new();
   $tlpdb->from_file($ARGV[0], verify => 0, media => "local_uncompressed");
@@ -69,7 +77,14 @@ sub main
       next;
     }
    
-    $pkgs{$pkg}{'category'} = $tlp->category;
+    # Treat Package/TLCore/ConTeXT all as Package
+    if ($tlp->category =~ m/^(Package|TLCore|ConTeXt)$/) {
+      $pkgs{$pkg}{'category'} = "Package";
+    } else {
+      $pkgs{$pkg}{'category'} = $tlp->category;
+    }
+    $allcats{$pkgs{$pkg}{'category'}} = 1;
+
     $pkgs{$pkg}{'revision'} = $tlp->revision;
     $pkgs{$pkg}{'depends'} = {};
     my @deps = $tlp->depends;
@@ -104,15 +119,19 @@ sub main
   print { $fd{'TLPDB'} } "uuid$idstr,revision$intstr,date$datestr,current$boolstr\n";
   print { $fd{'TLPDB'} } "tlpdb:$tlpdbrevision,$tlpdbrevision,$opt_date,true\n";
 
-  if ($opt_initial) {
+  if ($opt_old) {
     open($fd{'TLPOBJ'}, ">:encoding(UTF-8)", "$opt_output/node-TLPOBJ.csv") || die("Cannot open $opt_output/node-TLPOBJ.csv: $!");
     print { $fd{'TLPOBJ'} } "uuid$idstr,name,revision$intstr,:LABEL\n";
     open($fd{'TLPSRC'}, ">:encoding(UTF-8)", "$opt_output/node-TLPSRC.csv") || die("Cannot open $opt_output/node-TLPSRC.csv: $!");
     print { $fd{'TLPSRC'} } "name$idstr,:LABEL\n";
   } else {
-    for my $f (qw/Package Collection Scheme ConTeXt TLCore/) {
+    for my $f (keys %allcats) {
       open($fd{$f}, ">:encoding(UTF-8)", "$opt_output/node-$f.csv") || die("Cannot open $opt_output/node-$f.csv: $!");
-      print { $fd{$f} } "name,revision$intstr\n";
+      if ($opt_initial) {
+        print { $fd{$f} } "uuid$idstr,name,revision$intstr\n";
+      } else {
+        print { $fd{$f} } "name,revision$intstr\n";
+      }
     }
   }
 
@@ -122,7 +141,7 @@ sub main
   open($fd{'contains'}, ">:encoding(UTF-8)", "$opt_output/edge-contains.csv") || die("Cannot open $opt_output/edge-contains.csv: $!");
   open($fd{'includes'}, ">:encoding(UTF-8)", "$opt_output/edge-includes.csv") || die("Cannot open $opt_output/edge-includes.csv: $!");
 
-  if ($opt_initial) {
+  if ($opt_initial || $opt_old) {
     print { $fd{'depends'} } ":START_ID,:END_ID\n";
     print { $fd{'contains'} } ":START_ID,:END_ID\n";
     print { $fd{'includes'} } ":START_ID,type,:END_ID\n";
@@ -132,7 +151,7 @@ sub main
     print { $fd{'includes'} } "pkg,ver,type,file\n";
   }
 
-  if ($opt_initial) {
+  if ($opt_old) {
     open($fd{'instanceOf'}, ">:encoding(UTF-8)", "$opt_output/edge-instanceOf.csv") || die("Cannot open $opt_output/edge-instanceOf.csv: $!");
     print { $fd{'instanceOf'} } ":START_ID,:END_ID\n";
   }
@@ -141,14 +160,19 @@ sub main
     my $cat = $pkgs{$pkg}{'category'};
     my $uid = $pkgs{$pkg}{'uuid'};
     my $ver = $pkgs{$pkg}{'revision'};
-    if ($opt_initial) {
+    if ($opt_old) {
       print { $fd{'TLPOBJ'} } "$uid,$pkg,$ver,$cat\n";
       print { $fd{'TLPSRC'} } "$pkg,$cat\n";
       print { $fd{'contains'} } "tlpdb:$tlpdbrevision,$uid\n";
       print { $fd{'instanceOf'} } "$uid,$pkg\n";
     } else {
-      print { $fd{$cat}        } "$pkg,$ver\n";
-      print { $fd{'contains'} } "$tlpdbrevision,$pkg,$ver\n";
+      if ($opt_initial) {
+        print { $fd{$cat}        } "$uid,$pkg,$ver\n";
+        print { $fd{'contains'} } "tlpdb:$tlpdbrevision,$uid\n";
+      } else {
+        print { $fd{$cat}        } "$pkg,$ver\n";
+        print { $fd{'contains'} } "$tlpdbrevision,$pkg,$ver\n";
+      }
     }
     for my $dep (keys %{$pkgs{$pkg}{'depends'}}) {
       next if ($dep =~ m/\.ARCH$/);
@@ -163,7 +187,12 @@ sub main
       } else {
         if (defined($pkgs{$dep})) {
           my $depver = $pkgs{$dep}{'revision'};
-          print { $fd{'depends'} } "$pkg,$ver,$dep,$depver\n";
+          my $depuuid = $pkgs{$dep}{'uuid'};
+          if ($opt_initial) {
+            print { $fd{'depends'} } "$uid,$depuuid\n";
+          } else {
+            print { $fd{'depends'} } "$pkg,$ver,$dep,$depver\n";
+          }
         } else {
           print "Cannot find dependency $dep\n";
         }
@@ -175,8 +204,8 @@ sub main
     print { $fd{'File'} } "\"$f\"\n";
     for my $pkg (keys %{$fls{$f}{'contained'}}) {
       my $t = $fls{$f}{'contained'}{$pkg};
-      if ($opt_initial) {
-        my $cuuid = $pkgs{$pkg}{'uuid'};
+      my $cuuid = $pkgs{$pkg}{'uuid'};
+      if ($opt_old) {
         if ($cuuid) {
           print { $fd{'includes'} } "$cuuid,$t,\"$f\"\n";
         } else {
@@ -184,7 +213,15 @@ sub main
         }
       } else {
         my $pver = $pkgs{$pkg}{'revision'};
-        print { $fd{'includes'} } "$pkg,$pver,$t,\"$f\"\n";
+        if ($opt_initial) {
+          if ($cuuid) {
+            print { $fd{'includes'} } "$cuuid,$t,\"$f\"\n";
+          } else {
+            warn("Cannot find uuid for dependency $pkg for file $f\n");
+          }
+        } else {
+          print { $fd{'includes'} } "$pkg,$pver,$t,\"$f\"\n";
+        }
       }
     }
   }

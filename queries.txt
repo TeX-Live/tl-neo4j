@@ -31,6 +31,14 @@ PROBLEM with new style:
 	We want to restrict searches only to one revision of a tlpdb!!!
 
 
+Search where packages change between collections:
+	match (t1:TLPDB) -[:contains]-> (c1:Collection) -[:depends]-> 
+	              (p:Package) 
+            <-[:depends]- (c2:Collection) <-[:contains]- (t2:TLPDB) -[:next]-> (t1) 
+	where not (c1.name = c2.name)
+	return t1, t2, c1, c2, p ORDER BY t1.date DESC  LIMIT 1 ;
+Takes a long time!!!
+
 
 Search for files moved from one revision to the next
 match (t1:TLPDB) --> (p1:TLPackage) --> (f:File) <-- (p2:TLPackage) <-- (t2:TLPDB) 
@@ -40,7 +48,9 @@ match (t1:TLPDB) --> (p1:TLPackage) --> (f:File) <-- (p2:TLPackage) <-- (t2:TLPD
 
 
 
+STUFF
 
+timing: about 10-15sec per day for the cypher import
 
 
 Using Graph Algorithms:
